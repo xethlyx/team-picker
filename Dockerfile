@@ -26,8 +26,8 @@ RUN pnpm build
 FROM node:14-alpine as prod
 WORKDIR /usr/src/team-picker
 
-COPY --from build /usr/src/team-picker/server .
+COPY --from=build /usr/src/team-picker/server .
 
 EXPOSE 3000
 
-CMD ['npm start']
+CMD ["npm", "start"]
