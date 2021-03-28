@@ -5,7 +5,10 @@ import socketio, { Socket } from 'socket.io';
 
 const app = express();
 const appHttp = new http.Server(app);
-const io = new socketio.Server(appHttp);
+const io = new socketio.Server(appHttp, {
+	pingInterval: 4000,
+	pingTimeout: 10000
+});
 
 app.use(express.json());
 
@@ -30,6 +33,8 @@ interface Captain {
 }
 
 type SelectionMatch = {
+	timeout?: NodeJS.Timeout;
+
 	id: string;
 
 	hostSocket?: Socket;
@@ -183,7 +188,23 @@ io.on('connection', async connection => {
 
 		case 'host': {
 			selectedMatch.hostSocket?.disconnect();
+
+			if (selectedMatch.timeout) clearTimeout(selectedMatch.timeout);
+			selectedMatch.timeout = undefined;
+
 			selectedMatch.hostSocket = connection;
+
+			connection.on('disconnect', () => {
+				selectedMatch.timeout = setTimeout(() => {
+					if (!selectedMatch.hostSocket || selectedMatch.hostSocket.disconnected) {
+						state.delete(selectedMatch.id);
+
+						for (const { socket } of selectedMatch.captains.values()) {
+							socket?.disconnect();
+						}
+					}
+				}, 5000);
+			});
 
 			connection.on('add', (playerName) => {
 				if (typeof playerName !== 'string') return;
@@ -229,7 +250,16 @@ app.post('/api/create', (req, res) => {
 		players: new Map(),
 		secret: generateId(16),
 		id: generateId(16),
-		turn: Array.from(mappedCaptains.keys())[0]
+		turn: Array.from(mappedCaptains.keys())[0],
+		timeout: setTimeout(() => {
+			if (!newMatch.hostSocket || newMatch.hostSocket.disconnected) {
+				state.delete(newMatch.id);
+
+				for (const { socket } of newMatch.captains.values()) {
+					socket?.disconnect();
+				}
+			}
+		}, 60000)
 	};
 
 	state.set(newMatch.id, newMatch);
