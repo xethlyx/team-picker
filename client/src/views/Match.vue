@@ -11,8 +11,8 @@
 		<div class="selection-container unselected">
 			<div class="selection-header double-button">
 				<span>Unselected</span>
-				<button v-if="state.role === 'host'">Lua</button>
-				<button v-if="state.role === 'host'">Discord</button></div>
+				<button v-if="state.role === 'host'" @click="copy(generateLua())">Lua</button>
+				<button v-if="state.role === 'host'" @click="copy(generateDiscord())">Discord</button></div>
 			<PlayerComponent :name="playerName" v-for="playerName of playersOf('unselected')" :role="state.role" :key="playerName" @remove="removePlayer(playerName)" @pick="pickPlayer(playerName)" :turn="state.roleId === state.turn" />
 			<form class="selection-node new-player" v-if="state.role === 'host'" @submit.prevent="addPlayer">
 				<input v-model="state.newPlayer" type="text" />
@@ -123,7 +123,44 @@ export default defineComponent({
 			textArea.remove();
 		}
 
-		return { state, addPlayer, removePlayer, pickPlayer, playersOf, origin, copy };
+		function generateDiscord() {
+			const captains: Record<string, Array<string>> = Array.from(state.captainIds.keys()).reduce((existing, current) => ({...existing, [current]: []}), {});
+
+			for (const [player, team] of state.players.entries()) {
+				if (!(team in captains)) continue; // probs unselected
+				captains[team].push(player);
+			}
+
+			const formattedCaptains: Record<string, Array<string>> = Object.entries(captains).reduce((existing, [captainId, players]) => ({
+				...existing,
+				[state.captainIds.get(captainId)!]: players
+			}), {});
+
+			const result: Array<string> = [];
+
+			for (const [captainName, players] of Object.entries(formattedCaptains)) {
+				result.push(`**${captainName}**\n${players.join(' ')}`);
+			}
+
+			return result.join('\n\n');
+		}
+
+		function generateLua() {
+			const captains = Array.from(state.captainIds.keys());
+			const outputTable: Array<string> = [];
+
+			for (const [player, team] of state.players.entries()) {
+				if (!captains.includes(team)) {
+					captains.push(team);
+				}
+
+				outputTable.push(`["${player}"] = ${captains.findIndex(x => x === team)}`);
+			}
+
+			return `{ ${outputTable.join(', ')} }`;
+		}
+
+		return { state, addPlayer, removePlayer, pickPlayer, playersOf, origin, copy, generateLua, generateDiscord };
 	}
 });
 </script>
