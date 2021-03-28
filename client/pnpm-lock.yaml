@@ -1,5 +1,6 @@
 dependencies:
   core-js: 3.9.1
+  regenerator-runtime: 0.13.7
   socket.io-client: 4.0.0
   vue: 3.0.9
   vue-router: 4.0.5_vue@3.0.9
@@ -7825,7 +7826,6 @@ packages:
     resolution:
       integrity: sha512-zrceR/XhGYU/d/opr2EKO7aRHUeiBI8qjtfHqADTwZd6Szfy16la6kqD0MIUs5z5hx6AaKa+PixpPrR289+I0A==
   /regenerator-runtime/0.13.7:
-    dev: true
     resolution:
       integrity: sha512-a54FxoJDIr27pgf7IgeQGxmqUNYrcV338lf/6gH456HZ/PhX+5BcwHXG9ajESmwe6WRO0tAzRUrRmNONWgkrew==
   /regenerator-transform/0.14.5:
@@ -9878,6 +9878,7 @@ specifiers:
   core-js: ^3.6.5
   eslint: ^6.7.2
   eslint-plugin-vue: ^7.0.0
+  regenerator-runtime: ^0.13.7
   socket.io-client: ^4.0.0
   typescript: ~4.1.5
   vue: ^3.0.0
