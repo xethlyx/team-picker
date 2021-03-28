@@ -20,7 +20,7 @@ COPY server/pnpm-lock.yaml ./pnpm-lock.yaml
 RUN pnpm i
 
 COPY ./server .
-COPY --from=build-client /usr/src/team-picker/client/dist ./dist
+COPY --from=build-client /usr/src/team-picker/client/dist ./client
 
 RUN pnpm build
 RUN rm -rf ./node_modules

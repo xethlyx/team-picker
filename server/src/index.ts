@@ -8,7 +8,6 @@ const appHttp = new http.Server(app);
 const io = new socketio.Server(appHttp);
 
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'dist')));
 
 function generateId(length: number) {
 	let result = '';
@@ -240,6 +239,9 @@ app.post('/api/create', (req, res) => {
 		secret: newMatch.secret
 	}));
 });
+
+app.use(express.static(path.join(__dirname, '..', 'client')));
+app.get(/.*/, (req, res) => res.sendFile(path.join(__dirname, '..', 'client', 'index.html')));
 
 appHttp.listen(process.env.PORT || 3000, () => {
 	console.log('App started');
