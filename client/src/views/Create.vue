@@ -1,6 +1,9 @@
 <template>
 	<div class="create">
-		<div class="captain-container">
+		<div class="no-captain" v-if="state.captains.length === 0">
+			<span>No captains - you must add at least 2 team captains to continue.</span>
+		</div>
+		<div class="captain-container" v-else>
 			<div class="captain-node" v-for="(captain, index) in state.captains" :key="captain">
 				<span>{{ captain }}</span>
 				<button class="remove-button" @click="state.captains.splice(index, 1)">Remove</button>
@@ -93,6 +96,8 @@ export default defineComponent({
 	height: 2.25em;
 	align-items: center;
 	text-align: left;
+	font-size: 14px;
+	border-radius: 3px;
 }
 
 .captain-node button {
@@ -109,6 +114,7 @@ export default defineComponent({
 	gap: 0.4em;
 	align-items: center;
 	height: 3em;
+	border-radius: 3px;
 }
 
 .add-captain input {
@@ -123,5 +129,12 @@ export default defineComponent({
 	width: 20em;
 	padding: 0.5em 1em;
 	margin-top: 1em;
+}
+
+.no-captain {
+	max-width: 30em;
+	gap: 0.4em;
+	margin: 1.5em auto;
+	font-size: 14px;
 }
 </style>
