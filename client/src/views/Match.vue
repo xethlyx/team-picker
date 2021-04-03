@@ -21,7 +21,7 @@
 		</div>
 	</div>
 	<div class="match" v-else>
-		<span>Please wait...</span>
+		<span>Please wait... (refresh if this doesn't load within a reasonable time)</span>
 	</div>
 </template>
 
