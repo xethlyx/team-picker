@@ -71,7 +71,7 @@ const state = new Map<string, SelectionMatch>();
 io.on('connection', async connection => {
 	console.log('User connected');
 
-	let match = await new Promise<string | undefined>(res => connection.once('selectMatch', (inputtedMatch) => {
+	const matchPromise = new Promise<string | undefined>(res => connection.once('selectMatch', (inputtedMatch) => {
 		// new promise doesn't care about the return, so i'm using return on the same line to save some space
 		if (typeof inputtedMatch !== 'string') return res(undefined);
 		if (!state.get(inputtedMatch)) return res(undefined);
@@ -79,14 +79,7 @@ io.on('connection', async connection => {
 		res(inputtedMatch);
 	}));
 
-	if (!match) {
-		connection.disconnect();
-		return;
-	}
-
-	const selectedMatch = state.get(match)!;
-
-	const selectedRole = await new Promise<SelectionRole | undefined>(res => connection.once('selectRole', (secret) => {
+	const selectedRolePromise = new Promise<SelectionRole | undefined>(res => connection.once('selectRole', (secret) => {
 		if (typeof secret !== 'string') return res(undefined);
 
 		// check which secret it is
@@ -103,6 +96,16 @@ io.on('connection', async connection => {
 
 		res(undefined);
 	}));
+
+	const match = await matchPromise;
+	const selectedRole = await selectedRolePromise;
+
+	if (!match) {
+		connection.disconnect();
+		return;
+	}
+
+	const selectedMatch = state.get(match)!;
 
 	if (!selectedRole) {
 		connection.disconnect();
