@@ -18,8 +18,6 @@ RUN npm i -g pnpm
 COPY server/package.json ./package.json
 COPY server/pnpm-lock.yaml ./pnpm-lock.yaml
 
-RUN pnpm -v
-
 ENV NODE_ENV development
 RUN pnpm i && pnpm i
 
