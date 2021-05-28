@@ -6,7 +6,7 @@ COPY client/package.json ./package.json
 COPY client/pnpm-lock.yaml ./pnpm-lock.yaml
 
 ENV NODE_ENV development
-RUN pnpm i --loglevel verbose
+RUN pnpm i && pnpm i
 
 COPY ./client .
 RUN pnpm build
@@ -19,7 +19,7 @@ COPY server/package.json ./package.json
 COPY server/pnpm-lock.yaml ./pnpm-lock.yaml
 
 ENV NODE_ENV development
-RUN pnpm i --loglevel verbose
+RUN pnpm i && pnpm i
 
 COPY ./server .
 COPY --from=build-client /usr/src/team-picker/client/dist ./client
