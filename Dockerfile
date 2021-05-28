@@ -5,6 +5,7 @@ RUN npm i -g pnpm
 COPY client/package.json ./package.json
 COPY client/pnpm-lock.yaml ./pnpm-lock.yaml
 
+ENV NODE_ENV development
 RUN pnpm i
 
 COPY ./client .
@@ -17,6 +18,7 @@ RUN npm i -g pnpm
 COPY server/package.json ./package.json
 COPY server/pnpm-lock.yaml ./pnpm-lock.yaml
 
+ENV NODE_ENV development
 RUN pnpm i
 
 COPY ./server .
@@ -24,6 +26,8 @@ COPY --from=build-client /usr/src/team-picker/client/dist ./client
 
 RUN pnpm build
 RUN rm -rf ./node_modules
+
+ENV NODE_ENV production
 RUN npm i --production
 RUN rm -rf ./src
 
