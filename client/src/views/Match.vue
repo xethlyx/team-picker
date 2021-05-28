@@ -1,8 +1,11 @@
 <template>
 	<div class="match" v-if="state.role">
+		<div class="host-disconnected" v-if="!state.connected.host">
+			<span>Host disconnected! Auto-closing in 10 seconds..</span>
+		</div>
 		<div class="selection-container" v-for="[captainId, captainName] of state.captainIds" :key="captainId">
 			<div class="selection-header">
-				<span>{{ captainName }}<span class="picking" v-if="state.turn === captainId">Picking</span></span>
+				<span>{{ captainName }}<span class="picking" v-if="state.turn === captainId" title="It is currently their turn to pick">Picking</span><span class="picking" title="They are currently disconnected" v-if="!state.connected.captains[captainId]">Disconnected</span></span>
 				<button span v-if="state.role === 'host'" @click="copy(`${origin}/match/${$route.params.id}/${state.captainSecrets.get(captainId)}`)">COPY</button>
 				<span v-if="state.role === 'host'"><input type="text" readonly :value="`${origin}/match/${$route.params.id}/${state.captainSecrets.get(captainId)}`" /></span>
 			</div>
@@ -11,8 +14,8 @@
 		<div class="selection-container unselected">
 			<div class="selection-header double-button">
 				<span>Unselected</span>
-				<button v-if="state.role === 'host'" @click="copy(generateLua())">Lua</button>
-				<button v-if="state.role === 'host'" @click="copy(generateDiscord())">Discord</button></div>
+				<button v-if="state.role === 'host'" @click="copy(generateLua())" title="Copy Lua code to clipboard">Lua</button>
+				<button v-if="state.role === 'host'" @click="copy(generateDiscord())" title="Copy Discord message to clipboard">Discord</button></div>
 			<PlayerComponent :name="playerName" v-for="playerName of playersOf('unselected')" :role="state.role" :key="playerName" @remove="removePlayer(playerName)" @pick="pickPlayer(playerName)" :turn="state.roleId === state.turn" />
 			<form class="selection-node new-player" v-if="state.role === 'host'" @submit.prevent="addPlayer">
 				<input v-model="state.newPlayer" type="text" />
@@ -20,7 +23,7 @@
 			</form>
 		</div>
 	</div>
-	<div class="match" v-else>
+	<div class="match loading" v-else>
 		<span>Please wait... (refresh if this doesn't load within a reasonable time)</span>
 	</div>
 </template>
@@ -44,7 +47,8 @@ export default defineComponent({
 			captainIds: new Map<string, string>(),
 			captainSecrets: new Map<string, string>(),
 			players: new Map<string, string>(),
-			turn: ''
+			turn: '',
+			connected: { host: false, captains: {} } as { host: boolean, captains: Record<string, boolean> }
 		});
 
 		const origin = window.location.origin;
@@ -64,8 +68,6 @@ export default defineComponent({
 
 				return existing;
 			}, new Map<string, string>());
-
-			console.log(captainIds);
 		});
 
 		socket.once('permission', permission => state.role = permission);
@@ -73,8 +75,10 @@ export default defineComponent({
 		socket.on('picking', turn => state.turn = turn);
 		socket.on('newList', (players) => {
 			state.players = new Map(players);
+		});
 
-			console.log(players);
+		socket.on('connection', connectionObject => {
+			state.connected = connectionObject;
 		});
 
 		socket.emit('selectMatch', useRoute().params.id);
@@ -231,6 +235,40 @@ export default defineComponent({
 	padding: 0.25em 0.5em;
 	border-radius: 3px;
 	margin-left: 0.5em;
+}
+
+.host-disconnected {
+	z-index: 100;
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	background-color: rgba(0, 0, 0, 0.7);
+	color: #fff;
+}
+
+.loading {
+	z-index: 100;
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	width: 90%;
+	height: 90%;
+	max-width: 400px;
+	max-height: 100px;
+	padding: 10px 20px;
+	border-radius: 3px;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	background-color: rgba(255, 255, 255, 0.05);
+	color: #fff;
+
 }
 </style>
 

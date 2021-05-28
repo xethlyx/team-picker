@@ -12,10 +12,11 @@
 	outline: transparent;
 }
 
-body,html {
+body, html {
 	margin: 0;
 	background-color: #171717;
 	color: #fff;
+	cursor: default;
 }
 
 input[type=text] {
@@ -29,5 +30,10 @@ input[type=text] {
 
 button {
 	font-size: 14px;
+	cursor: pointer;
+}
+
+button:active {
+	opacity: 0.5;
 }
 </style>

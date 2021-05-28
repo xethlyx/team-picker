@@ -36,6 +36,7 @@ type SelectionMatch = {
 	timeout?: NodeJS.Timeout;
 
 	id: string;
+	closing: boolean;
 
 	hostSocket?: Socket;
 	secret: string;
@@ -107,12 +108,14 @@ io.on('connection', async connection => {
 	const selectedRole = await selectedRolePromise;
 
 	if (!match || !selectedRole) {
+		console.log('Match or selected role was undefined');
 		connection.disconnect();
 		return;
 	}
 
 	const selectedMatch = state.get(match)!;
 	if (!selectedMatch) {
+		console.log('Selected match not found');
 		connection.disconnect();
 		return;
 	}
@@ -168,6 +171,22 @@ io.on('connection', async connection => {
 		});
 	}
 
+	function updateConnection() {
+		const connectionObject: { host: boolean; captains: Record<string, boolean> } = {
+			host: selectedMatch.hostSocket ? !selectedMatch.hostSocket.disconnected : false,
+			captains: {}
+		};
+
+		for (const [captainId, captainData] of selectedMatch.captains.entries()) {
+			connectionObject.captains[captainId] = captainData.socket ? !captainData.socket.disconnected : false;
+		}
+
+		selectedMatch.hostSocket?.emit('connection', connectionObject);
+		selectedMatch.captains.forEach(captain => {
+			captain.socket?.emit('connection', connectionObject);
+		});
+	}
+
 	connection.emit('captainIds', Array.from(selectedMatch.captains.entries()).map(([captainId, captainData]) => ({ name: captainData.name, id: captainId, secret: selectedRole.role === 'host' ? captainData.secret : undefined })));
 	connection.emit('newList', Array.from(selectedMatch.players.entries()));
 	connection.emit('roleId', selectedRole.role === 'captain' ? selectedRole.id : 'host');
@@ -180,7 +199,7 @@ io.on('connection', async connection => {
 			selectedMatch.captains.get(selectedRole.id)!.socket?.disconnect();
 			selectedMatch.captains.get(selectedRole.id)!.socket = connection;
 
-			connection.on('pick', (playerId) => {
+			connection.on('pick', playerId => {
 				if (typeof playerId !== 'string') return;
 				if (selectedMatch.turn !== selectedRole.id) return;
 				if (!selectedMatch.players.has(playerId)) return;
@@ -189,6 +208,12 @@ io.on('connection', async connection => {
 
 				updateLists();
 				cycleCaptain();
+			});
+
+			connection.on('disconnect', () => {
+				if (selectedMatch.closing) return;
+				selectedMatch.captains.get(selectedRole.id)!.socket = undefined;
+				updateConnection();
 			});
 
 			break;
@@ -203,15 +228,17 @@ io.on('connection', async connection => {
 			selectedMatch.hostSocket = connection;
 
 			connection.on('disconnect', () => {
+				updateConnection();
 				selectedMatch.timeout = setTimeout(() => {
 					if (!selectedMatch.hostSocket || selectedMatch.hostSocket.disconnected) {
+						selectedMatch.closing = true;
 						state.delete(selectedMatch.id);
 
 						for (const { socket } of selectedMatch.captains.values()) {
 							socket?.disconnect();
 						}
 					}
-				}, 5000);
+				}, 10000);
 			});
 
 			connection.on('add', (playerName) => {
@@ -233,6 +260,8 @@ io.on('connection', async connection => {
 			break;
 		}
 	}
+
+	updateConnection();
 });
 
 app.post('/api/create', (req, res) => {
@@ -254,6 +283,7 @@ app.post('/api/create', (req, res) => {
 	}, new Map<string, Captain>());
 
 	const newMatch: SelectionMatch = {
+		closing: false,
 		captains: mappedCaptains,
 		players: new Map(),
 		secret: generateId(16),

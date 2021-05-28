@@ -1,7 +1,7 @@
 <template>
 	<div class="home">
 		<h1>Team Selection</h1>
-		<p>Live team selection</p>
+		<p>Live team selection - source code is available on <a href="https://github.com/xethlyx/team-picker">Github</a>.</p>
 		<router-link to="/create">
 			<button class="create">
 				Create new match
@@ -21,6 +21,11 @@ export default defineComponent({
 <style scoped>
 .home {
 	text-align: center;
+}
+
+.home a {
+	color: #3498db;
+	text-decoration: none;
 }
 
 .create {
