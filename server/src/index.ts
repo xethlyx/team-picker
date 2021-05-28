@@ -79,8 +79,14 @@ io.on('connection', async connection => {
 		res(inputtedMatch);
 	}));
 
-	const selectedRolePromise = new Promise<SelectionRole | undefined>(res => connection.once('selectRole', (secret) => {
+	const selectedRolePromise = new Promise<SelectionRole | undefined>(res => connection.once('selectRole', async secret => {
 		if (typeof secret !== 'string') return res(undefined);
+
+		const match = await matchPromise;
+		if (!match) return res(undefined);
+
+		const selectedMatch = state.get(match);
+		if (!selectedMatch) return res(undefined);
 
 		// check which secret it is
 		if (secret === selectedMatch.secret) return res({
@@ -100,14 +106,13 @@ io.on('connection', async connection => {
 	const match = await matchPromise;
 	const selectedRole = await selectedRolePromise;
 
-	if (!match) {
+	if (!match || !selectedRole) {
 		connection.disconnect();
 		return;
 	}
 
 	const selectedMatch = state.get(match)!;
-
-	if (!selectedRole) {
+	if (!selectedMatch) {
 		connection.disconnect();
 		return;
 	}
