@@ -5,22 +5,46 @@
 		</div>
 		<div class="selection-container" v-for="[captainId, captainName] of state.captainIds" :key="captainId">
 			<div class="selection-header">
-				<span>{{ captainName }}<span class="picking" v-if="state.turn === captainId" title="It is currently their turn to pick">Picking</span><span class="picking" title="They are currently disconnected" v-if="!state.connected.captains[captainId]">Disconnected</span></span>
-				<button span v-if="state.role === 'host'" @click="copy(`${origin}/match/${$route.params.id}/${state.captainSecrets.get(captainId)}`)">COPY</button>
-				<span v-if="state.role === 'host'"><input type="text" readonly :value="`${origin}/match/${$route.params.id}/${state.captainSecrets.get(captainId)}`" /></span>
+				<span>
+					{{ captainName }}
+				</span>
+				<span class="right-container">
+					<transition-group name="list" @before-leave="beforeLeave">
+						<span class="badge picking" v-if="state.turn === captainId" title="It is currently their turn to pick" key="picking">
+							<i class="las la-pen"></i>
+						</span>
+						<span class="badge disconnected" title="They are currently disconnected" v-if="!state.connected.captains[captainId]" key="disconnected">
+							<i class="las la-plug"></i>
+						</span>
+						<button class="badge host-action" title="Click to ping (usually doesn't work until the user interacts)" v-else-if="isHost" key="notify" @click="pingCaptain(captainId)">
+							<i class="las la-bell"></i>
+						</button>
+						<button class="badge host-action" title="Click to change turn" v-if="isHost" key="turn" @click="forcePick(captainId)">
+							<i class="las la-play"></i>
+						</button>
+						<span v-if="isHost" class="join-link" key="input">
+							<PasteInput :text="`${origin}/match/${$route.params.id}/${state.captainSecrets.get(captainId)}`" />
+						</span>
+					</transition-group>
+				</span>
 			</div>
-			<PlayerComponent :name="playerName" v-for="playerName of playersOf(captainId)" :role="state.role" :key="playerName" @remove="removePlayer(playerName)" @pick="pickPlayer(playerName)" :turn="false" />
+			<transition-group name="list" @before-leave="beforeLeave">
+				<PlayerComponent :name="playerName" v-for="playerName of playersOf(captainId)" :role="state.role" :key="playerName" @remove="removePlayer(playerName)" @pick="pickPlayer(playerName)" :turn="false" />
+			</transition-group>
 		</div>
 		<div class="selection-container unselected">
 			<div class="selection-header double-button">
 				<span>Unselected</span>
-				<button v-if="state.role === 'host'" @click="copy(generateLua())" title="Copy Lua code to clipboard">Lua</button>
-				<button v-if="state.role === 'host'" @click="copy(generateDiscord())" title="Copy Discord message to clipboard">Discord</button></div>
-			<PlayerComponent :name="playerName" v-for="playerName of playersOf('unselected')" :role="state.role" :key="playerName" @remove="removePlayer(playerName)" @pick="pickPlayer(playerName)" :turn="state.roleId === state.turn" />
-			<form class="selection-node new-player" v-if="state.role === 'host'" @submit.prevent="addPlayer">
-				<input v-model="state.newPlayer" type="text" />
-				<button @click="addPlayer">ADD</button>
-			</form>
+				<PasteInput :text="generateLua()" displayText="Lua" v-if="isHost" />
+				<PasteInput :text="generateDiscord()" displayText="Discord" v-if="isHost" />
+			</div>
+			<transition-group name="list" @before-leave="beforeLeave">
+				<PlayerComponent :name="playerName" v-for="playerName of playersOf('unselected')" :role="state.role" :key="playerName" @remove="removePlayer(playerName)" @pick="pickPlayer(playerName)" :turn="state.roleId === state.turn" />
+				<form class="selection-node new-player" v-if="isHost" @submit.prevent="addPlayer" key="__newplayer">
+					<input v-model="state.newPlayer" type="text" placeholder="Add new player" />
+					<button @click="addPlayer"><i class="las la-user-plus"></i></button>
+				</form>
+			</transition-group>
 		</div>
 	</div>
 	<div class="match loading" v-else>
@@ -29,15 +53,18 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, reactive } from 'vue';
+import { computed, defineComponent, reactive } from 'vue';
 import { io } from 'socket.io-client';
 import { useRoute } from 'vue-router';
 import router from '@/router';
 import PlayerComponent from '@/components/PlayerComponent.vue';
+import PasteInput from '@/components/PasteInput.vue';
+import { beforeLeave } from '@/beforeLeave';
 
 export default defineComponent({
 	components: {
-		PlayerComponent
+		PlayerComponent,
+		PasteInput
 	},
 	setup() {
 		const state = reactive({
@@ -50,6 +77,8 @@ export default defineComponent({
 			turn: '',
 			connected: { host: false, captains: {} } as { host: boolean, captains: Record<string, boolean> }
 		});
+
+		const isHost = computed(() => state.role === 'host');
 
 		const origin = window.location.origin;
 
@@ -81,6 +110,11 @@ export default defineComponent({
 			state.connected = connectionObject;
 		});
 
+		socket.on('ping', () => {
+			const ping = new Audio('/notify.wav');
+			ping.play();
+		});
+
 		socket.emit('selectMatch', useRoute().params.id);
 		socket.emit('selectRole', useRoute().params.secret);
 
@@ -103,28 +137,12 @@ export default defineComponent({
 			return Array.from(state.players.entries()).filter(([, playerGroup]) => playerGroup === group).map(([playerName]) => playerName);
 		}
 
-		function copy(text: string) {
-			const textArea = document.createElement('textarea');
+		function pingCaptain(captain: string) {
+			socket.emit('ping', captain);
+		}
 
-			textArea.style.position = 'fixed';
-			textArea.style.top = '0';
-			textArea.style.left = '0';
-			textArea.style.width = '2em';
-			textArea.style.height = '2em';
-			textArea.style.padding = '0';
-			textArea.style.border = 'none';
-			textArea.style.outline = 'none';
-			textArea.style.boxShadow = 'none';
-			textArea.style.background = 'transparent';
-			textArea.value = text;
-
-			document.body.appendChild(textArea);
-
-			textArea.focus();
-			textArea.select();
-			document.execCommand('copy');
-
-			textArea.remove();
+		function forcePick(captain: string) {
+			socket.emit('forcePick', captain);
 		}
 
 		function generateDiscord() {
@@ -164,7 +182,7 @@ export default defineComponent({
 			return `{ ${outputTable.join(', ')} }`;
 		}
 
-		return { state, addPlayer, removePlayer, pickPlayer, playersOf, origin, copy, generateLua, generateDiscord };
+		return { state, isHost, addPlayer, removePlayer, pickPlayer, playersOf, origin, pingCaptain, forcePick, generateLua, generateDiscord, beforeLeave };
 	}
 });
 </script>
@@ -194,33 +212,38 @@ export default defineComponent({
 
 .new-player {
 	display: grid;
-	grid-template-columns: 1fr 50px;
+	grid-template-columns: 1fr 2rem;
 	gap: 0.4em;
+	height: auto;
+	padding: 0.3125rem;
 }
 
 .new-player button {
 	height: 100%;
-	background-color: rgba(255, 255, 255, 0.05);
 	border: 0;
 	border-radius: 3px;
 	color: #fff;
+	height: 2rem;
+}
+
+.new-player input {
+	height: 2rem;
 }
 
 .selection-header {
 	display: grid;
-	grid-template-columns: 1fr 80px 1fr;
+	grid-template-columns: 1fr 1fr;
 	align-items: center;
 	height: 35px;
 	gap: 0.4em;
 }
 
 .selection-header.double-button {
-	grid-template-columns: 1fr 80px 80px;
+	grid-template-columns: 1fr 6.5rem 6.5rem;
 }
 
 .selection-header button {
 	height: 100%;
-	background-color: rgba(255, 255, 255, 0.05);
 	border: 0;
 	border-radius: 3px;
 	color: #fff;
@@ -230,11 +253,16 @@ export default defineComponent({
 	width: 100%;
 }
 
-.picking {
+.badge {
 	background-color: rgba(255, 255, 255, 0.05);
-	padding: 0.25em 0.5em;
+	width: 2rem;
+	height: 2rem;
+	display: inline-block;
+	text-align: center;
+	line-height: 2rem;
 	border-radius: 3px;
-	margin-left: 0.5em;
+	flex-shrink: 0;
+	padding: 0;
 }
 
 .host-disconnected {
@@ -268,14 +296,39 @@ export default defineComponent({
 	align-items: center;
 	background-color: rgba(255, 255, 255, 0.05);
 	color: #fff;
+}
 
+.right-container {
+	justify-content: flex-end;
+	display: flex;
+	gap: 0.4rem;
+}
+
+.disconnected {
+	color: #e74c3c;
+}
+
+.picking {
+	color: #2ecc71;
+}
+
+.host-action:hover {
+	background-color: #e67e22;
+}
+
+.join-link .paste-input {
+	width: 10rem;
+	flex-shrink: 0;
 }
 </style>
 
 <style>
 .selection-node {
+	display: block;
 	background-color: rgba(255, 255, 255, 0.05);
-	padding: 5px;
+	padding: 0.3125rem 0.3125rem 0.3125rem 0.5rem;
 	border-radius: 3px;
+	height: 2rem;
+	line-height: 1.375rem;
 }
 </style>

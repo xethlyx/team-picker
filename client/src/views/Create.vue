@@ -1,27 +1,29 @@
 <template>
 	<div class="create">
-		<div class="no-captain" v-if="state.captains.length === 0">
-			<span>No captains - you must add at least 2 team captains to continue.</span>
-		</div>
-		<div class="captain-container" v-else>
-			<div class="captain-node" v-for="(captain, index) in state.captains" :key="captain">
-				<span>{{ captain }}</span>
-				<button class="remove-button" @click="state.captains.splice(index, 1)">Remove</button>
-			</div>
+		<div class="captain-container">
+			<transition-group name="list" @before-leave="beforeLeave">
+				<div class="no-captain" v-if="state.captains.length === 0" :key="noCaptainSymbol">
+					<p>No captains - you must add at least 2 team captains to continue.</p>
+				</div>
+				<div class="captain-node" v-for="(captain, index) in state.captains" :key="captain">
+					<span>{{ captain }}</span>
+					<button class="remove-button" @click="state.captains.splice(index, 1)"><i class="las la-user-minus"></i></button>
+				</div>
+				<form class="add-captain" @submit.prevent="addCaptain" :key="addCaptainSymbol">
+					<input type="text" v-model="state.captainName" placeholder="Captain name">
+					<button @click="addCaptain"><i class="las la-user-plus"></i></button>
+				</form>
+				<button class="create-button" @click="create">CREATE</button>
+			</transition-group>
 		</div>
 
-		<form class="add-captain" @submit.prevent="addCaptain">
-			<input type="text" v-model="state.captainName" placeholder="Captain name">
-			<button @click="addCaptain">ADD</button>
-		</form>
-
-		<button class="create-button" @click="create">CREATE</button>
 	</div>
 </template>
 
 <script lang="ts">
 import router from '@/router';
 import { defineComponent, reactive } from 'vue';
+import { beforeLeave } from '@/beforeLeave';
 
 export default defineComponent({
 	setup() {
@@ -62,7 +64,10 @@ export default defineComponent({
 			state.captainName = '';
 		}
 
-		return { state, create, addCaptain };
+		const noCaptainSymbol = Symbol();
+		const addCaptainSymbol = Symbol();
+
+		return { state, create, addCaptain, beforeLeave, noCaptainSymbol, addCaptainSymbol };
 	}
 });
 </script>
@@ -74,7 +79,6 @@ export default defineComponent({
 
 .create button {
 	height: 100%;
-	background-color: rgba(255, 255, 255, 0.05);
 	border: 0;
 	border-radius: 3px;
 	color: #fff;
@@ -86,14 +90,15 @@ export default defineComponent({
 	max-width: 30em;
 	gap: 0.4em;
 	margin: 0.4em auto;
+	margin-top: 2rem;
 }
 
 .captain-node {
 	background-color: rgba(255, 255, 255, 0.05);
 	display: grid;
-	grid-template-columns: 1fr 80px;
+	grid-template-columns: 1fr 2rem;
 	padding: 0.25em 0.5em;
-	height: 2.25em;
+	height: 2rem;
 	align-items: center;
 	text-align: left;
 	font-size: 14px;
@@ -106,10 +111,10 @@ export default defineComponent({
 
 .add-captain {
 	background-color: rgba(255, 255, 255, 0.05);
-	max-width: 30em;
+	width: 100%;
 	margin: 0.4em auto;
 	display: grid;
-	grid-template-columns: 1fr 80px;
+	grid-template-columns: 1fr 2rem;
 	padding: 0.4em;
 	gap: 0.4em;
 	align-items: center;
@@ -119,14 +124,17 @@ export default defineComponent({
 
 .add-captain input {
 	height: 100%;
+	height: 2rem;
 }
 
 .add-captain button {
 	width: 100%;
+	height: 2rem;
+	line-height: 2rem;
 }
 
 .create-button {
-	width: 20em;
+	width: 100%;
 	padding: 0.5em 1em;
 	margin-top: 1em;
 }

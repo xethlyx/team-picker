@@ -30,7 +30,6 @@ export default defineComponent({
 
 .create {
 	height: 100%;
-	background-color: rgba(255, 255, 255, 0.05);
 	border: 0;
 	border-radius: 3px;
 	color: #fff;

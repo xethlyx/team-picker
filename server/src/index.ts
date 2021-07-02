@@ -260,6 +260,20 @@ io.on('connection', async connection => {
 				updateLists();
 			});
 
+			connection.on('ping', captainId => {
+				const captain = selectedMatch.captains.get(captainId);
+				captain?.socket?.emit('ping');
+			});
+
+			connection.on('forcePick', captainId => {
+				selectedMatch.turn = captainId;
+
+				selectedMatch.hostSocket?.emit('picking', selectedMatch.turn);
+				selectedMatch.captains.forEach(captain => {
+					captain.socket?.emit('picking', selectedMatch.turn);
+				});
+			});
+
 			break;
 		}
 	}

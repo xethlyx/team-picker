@@ -1,8 +1,8 @@
 <template>
 	<div class="player selection-node">
-		{{ $props.name }}
-		<button class="remove" @click="$emit('remove')" v-if="$props.role === 'host'">X</button>
-		<button class="remove" @click="$emit('pick')" v-if="$props.role === 'captain' && $props.turn">+</button>
+		<span>{{ $props.name }}</span>
+		<button class="remove" @click="$emit('remove')" v-if="$props.role === 'host'"><i class="las la-user-minus"></i></button>
+		<button class="pick" @click="$emit('pick')" v-if="$props.role === 'captain' && $props.turn"><i class="las la-user-friends"></i></button>
 	</div>
 </template>
 
@@ -31,17 +31,23 @@ export default defineComponent({
 <style scoped>
 .player {
 	display: grid;
-	grid-template-columns: 1fr 30px;
-	height: 30px;
+	grid-template-columns: 1fr 2rem;
 	grid-template-rows: 1fr;
 	font-size: 14px;
 }
 
 .player button {
-	background-color: rgba(255, 255, 255, 0.05);
 	border: 0;
 	border-radius: 3px;
 	color: #fff;
 	height: 100%;
+}
+
+.remove:active, .remove:hover {
+	background-color: #e74c3c;
+}
+
+.pick:active, .pick:hover {
+	background-color: #2ecc71;
 }
 </style>
