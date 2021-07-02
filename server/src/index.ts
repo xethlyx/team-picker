@@ -121,7 +121,7 @@ io.on('connection', async connection => {
 	}
 
 	// this will be a pain to debug
-	function cycleCaptain() {
+	function cycleCaptain(aggressive: boolean) {
 		// determine if any captain is at a disadvantage in terms of players
 		const captainsToPlayers = new Map<string, number>();
 		for (const captain of selectedMatch.captains.keys()) {
@@ -147,6 +147,9 @@ io.on('connection', async connection => {
 			selectedMatch.turn = captainsAndPlayers[0].captainId;
 		} else {
 			// no one was at an advantage, cycle downwards
+
+			if (!aggressive) return;
+
 			const captainIds = Array.from(selectedMatch.captains.keys());
 			let index = captainIds.findIndex(x => x === selectedMatch.turn);
 
@@ -207,7 +210,7 @@ io.on('connection', async connection => {
 				selectedMatch.players.set(playerId, selectedRole.id);
 
 				updateLists();
-				cycleCaptain();
+				cycleCaptain(true);
 			});
 
 			connection.on('disconnect', () => {
@@ -253,7 +256,7 @@ io.on('connection', async connection => {
 
 				selectedMatch.players.delete(playerName);
 
-				cycleCaptain();
+				cycleCaptain(false);
 				updateLists();
 			});
 
