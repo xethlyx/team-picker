@@ -22,7 +22,7 @@ export default defineComponent({
 			required: false
 		}
 	},
-	setup() {
+	setup(props) {
 		let resetCopied: number;
 
 		const state = reactive({
@@ -31,13 +31,37 @@ export default defineComponent({
 
 		const input = ref<HTMLInputElement>();
 
-		function copy() {
-			const inputValue = input.value!;
-
-			inputValue.focus();
-			inputValue.select();
+		function altCopy(text: string) {
+			const textArea = document.createElement('textarea');
+			textArea.style.position = 'fixed';
+			textArea.style.top = '0';
+			textArea.style.left = '0';
+			textArea.style.width = '2em';
+			textArea.style.height = '2em';
+			textArea.style.padding = '0';
+			textArea.style.border = 'none';
+			textArea.style.outline = 'none';
+			textArea.style.boxShadow = 'none';
+			textArea.style.background = 'transparent';
+			textArea.value = text;
+			document.body.appendChild(textArea);
+			textArea.focus();
+			textArea.select();
 			document.execCommand('copy');
-			window.getSelection()?.removeAllRanges();
+			textArea.remove();
+		}
+
+		function copy() {
+			if (props.displayText !== undefined) {
+				altCopy(props.text);
+			} else {
+				const inputValue = input.value!;
+
+				inputValue.focus();
+				inputValue.select();
+				document.execCommand('copy');
+				window.getSelection()?.removeAllRanges();
+			}
 
 			if (resetCopied) clearTimeout(resetCopied);
 			state.copied = true;
