@@ -35,8 +35,14 @@
 		<div class="selection-container unselected">
 			<div class="selection-header double-button">
 				<span>Unselected</span>
-				<PasteInput :text="generateLua()" displayText="Lua" v-if="isHost" />
-				<PasteInput :text="generateDiscord()" displayText="Discord" v-if="isHost" />
+				<div class="button-container">
+					<transition name="fade">
+						<div class="spectator" title="Spectators" v-if="state.connected.spectators !== 0"><span class="count">{{ state.connected.spectators }}</span><i class="las la-eye"></i></div>
+					</transition>
+					<PasteInput :text="generateLua()" displayText="Lua" v-if="isHost" />
+					<PasteInput :text="generateDiscord()" displayText="Discord" v-if="isHost" />
+					<PasteInput :text="`${origin}/match/${$route.params.id}/${state.spectatorSecret}`" displayText="Spectate" />
+				</div>
 			</div>
 			<transition-group name="list" @before-leave="beforeLeave">
 				<PlayerComponent :name="playerName" v-for="playerName of playersOf('unselected')" :role="state.role" :key="playerName" @remove="removePlayer(playerName)" @pick="pickPlayer(playerName)" :turn="state.roleId === state.turn" />
@@ -75,7 +81,8 @@ export default defineComponent({
 			captainSecrets: new Map<string, string>(),
 			players: new Map<string, string>(),
 			turn: '',
-			connected: { host: false, captains: {} } as { host: boolean, captains: Record<string, boolean> }
+			connected: { host: false, captains: {}, spectators: 0 } as { host: boolean, captains: Record<string, boolean>, spectators: number },
+			spectatorSecret: ''
 		});
 
 		const isHost = computed(() => state.role === 'host');
@@ -101,6 +108,7 @@ export default defineComponent({
 
 		socket.once('permission', permission => state.role = permission);
 		socket.once('roleId', roleId => state.roleId = roleId);
+		socket.once('spectatorSecret', secret => state.spectatorSecret = secret);
 		socket.on('picking', turn => state.turn = turn);
 		socket.on('newList', (players) => {
 			state.players = new Map(players);
@@ -239,7 +247,7 @@ export default defineComponent({
 }
 
 .selection-header.double-button {
-	grid-template-columns: 1fr 6.5rem 6.5rem;
+	grid-template-columns: 1fr 1fr;
 }
 
 .selection-header button {
@@ -319,6 +327,31 @@ export default defineComponent({
 .join-link .paste-input {
 	width: 10rem;
 	flex-shrink: 0;
+}
+
+.button-container {
+	display: flex;
+	flex-direction: row;
+	gap: 0.4rem;
+	justify-content: flex-end;
+}
+
+.button-container > div {
+	width: 6.8rem;
+	flex-shrink: 0;
+}
+
+div.spectator {
+	background-color: rgba(255, 255, 255, 0.05);
+	width: auto;
+	line-height: 2rem;
+	height: 2rem;
+	border-radius: 3px;
+	padding: 0 0.4rem;
+}
+
+div.spectator .count {
+	margin-right: 0.4rem;
 }
 </style>
 

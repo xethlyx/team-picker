@@ -40,6 +40,7 @@ type SelectionMatch = {
 
 	hostSocket?: Socket;
 	secret: string;
+	spectatorSecret: string;
 
 	/**
 	 * Value: captain id
@@ -54,6 +55,8 @@ type SelectionMatch = {
 	 * Index: id, Value: name
 	 */
 	captains: Map<string, Captain>;
+
+	spectators: Array<Socket>;
 }
 
 interface SelectionRoleHost {
@@ -65,7 +68,11 @@ interface SelectionRoleCaptain {
 	id: string;
 }
 
-type SelectionRole = SelectionRoleHost | SelectionRoleCaptain;
+interface SelectionRoleSpectator {
+	role: 'spectator';
+}
+
+type SelectionRole = SelectionRoleHost | SelectionRoleCaptain | SelectionRoleSpectator;
 
 const state = new Map<string, SelectionMatch>();
 
@@ -94,6 +101,10 @@ io.on('connection', async connection => {
 			role: 'host'
 		});
 
+		if (secret === selectedMatch.spectatorSecret) return res({
+			role: 'spectator'
+		});
+
 		for (const [captainId, captainData] of selectedMatch.captains.entries()) {
 			if (secret === captainData.secret) return res({
 				role: 'captain',
@@ -118,6 +129,16 @@ io.on('connection', async connection => {
 		console.log('Selected match not found');
 		connection.disconnect();
 		return;
+	}
+
+	function sendToAll(key: string, ...args: Array<unknown>) {
+		selectedMatch.hostSocket?.emit(key, ...args);
+		selectedMatch.captains.forEach(captain => {
+			captain.socket?.emit(key, ...args);
+		});
+		selectedMatch.spectators.forEach(spectator => {
+			spectator.emit(key, ...args);
+		});
 	}
 
 	// this will be a pain to debug
@@ -161,40 +182,39 @@ io.on('connection', async connection => {
 			selectedMatch.turn = captainIds[index];
 		}
 
-		selectedMatch.hostSocket?.emit('picking', selectedMatch.turn);
-		selectedMatch.captains.forEach(captain => {
-			captain.socket?.emit('picking', selectedMatch.turn);
-		});
+		sendToAll('picking', selectedMatch.turn);
 	}
 
 	function updateLists() {
-		selectedMatch.hostSocket?.emit('newList', Array.from(selectedMatch.players.entries()));
-		selectedMatch.captains.forEach(captain => {
-			captain.socket?.emit('newList', Array.from(selectedMatch.players.entries()));
-		});
+		sendToAll('newList', Array.from(selectedMatch.players.entries()));
 	}
 
-	function updateConnection() {
-		const connectionObject: { host: boolean; captains: Record<string, boolean> } = {
+	function generateConnectionObject() {
+		const connectionObject: { host: boolean; captains: Record<string, boolean>, spectators: number } = {
 			host: selectedMatch.hostSocket ? !selectedMatch.hostSocket.disconnected : false,
-			captains: {}
+			captains: {},
+			spectators: selectedMatch.spectators.length
 		};
 
 		for (const [captainId, captainData] of selectedMatch.captains.entries()) {
 			connectionObject.captains[captainId] = captainData.socket ? !captainData.socket.disconnected : false;
 		}
 
-		selectedMatch.hostSocket?.emit('connection', connectionObject);
-		selectedMatch.captains.forEach(captain => {
-			captain.socket?.emit('connection', connectionObject);
-		});
+		return connectionObject;
+	}
+
+	function updateConnection() {
+		sendToAll('connection', generateConnectionObject());
 	}
 
 	connection.emit('captainIds', Array.from(selectedMatch.captains.entries()).map(([captainId, captainData]) => ({ name: captainData.name, id: captainId, secret: selectedRole.role === 'host' ? captainData.secret : undefined })));
 	connection.emit('newList', Array.from(selectedMatch.players.entries()));
-	connection.emit('roleId', selectedRole.role === 'captain' ? selectedRole.id : 'host');
+	connection.emit('roleId', selectedRole.role === 'captain'
+		? selectedRole.id
+		: selectedRole.role);
 	connection.emit('picking', selectedMatch.turn);
 	connection.emit('permission', selectedRole.role);
+	connection.emit('spectatorSecret', selectedMatch.spectatorSecret);
 
 	// apply listeners
 	switch(selectedRole.role) {
@@ -268,10 +288,19 @@ io.on('connection', async connection => {
 			connection.on('forcePick', captainId => {
 				selectedMatch.turn = captainId;
 
-				selectedMatch.hostSocket?.emit('picking', selectedMatch.turn);
-				selectedMatch.captains.forEach(captain => {
-					captain.socket?.emit('picking', selectedMatch.turn);
-				});
+				sendToAll('picking', selectedMatch.turn);
+			});
+
+			break;
+		}
+
+		case 'spectator': {
+			selectedMatch.spectators.push(connection);
+
+			connection.on('disconnect', () => {
+				const index = selectedMatch.spectators.findIndex(value => value === connection);
+				selectedMatch.spectators.splice(index, 1);
+				updateConnection();
 			});
 
 			break;
@@ -304,6 +333,7 @@ app.post('/api/create', (req, res) => {
 		captains: mappedCaptains,
 		players: new Map(),
 		secret: generateId(16),
+		spectatorSecret: generateId(16),
 		id: generateId(16),
 		turn: Array.from(mappedCaptains.keys())[0],
 		timeout: setTimeout(() => {
@@ -314,8 +344,11 @@ app.post('/api/create', (req, res) => {
 					socket?.disconnect();
 				}
 			}
-		}, 60000)
+		}, 60000),
+		spectators: []
 	};
+
+	console.log(`New match: ${process.env.ORIGIN ?? ''}/match/${newMatch.id}/${newMatch.spectatorSecret}`);
 
 	state.set(newMatch.id, newMatch);
 
