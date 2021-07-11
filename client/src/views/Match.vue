@@ -11,7 +11,7 @@
 				<span class="right-container">
 					<transition-group name="list" @before-leave="beforeLeave">
 						<span class="badge picking" v-if="state.turn === captainId" title="It is currently their turn to pick" key="picking">
-							<i class="las la-check"></i>
+							<i class="las la-pen"></i>
 						</span>
 						<span class="badge disconnected" title="They are currently disconnected" v-if="!state.connected.captains[captainId]" key="disconnected">
 							<i class="las la-plug"></i>
