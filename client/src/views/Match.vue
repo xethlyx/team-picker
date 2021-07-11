@@ -5,13 +5,13 @@
 		</div>
 		<div class="selection-container" v-for="[captainId, captainName] of state.captainIds" :key="captainId">
 			<div class="selection-header">
-				<span>
+				<span contenteditable="true" @input="editCaptainName($event.target.textContent, captainId)">
 					{{ captainName }}
 				</span>
 				<span class="right-container">
 					<transition-group name="list" @before-leave="beforeLeave">
 						<span class="badge picking" v-if="state.turn === captainId" title="It is currently their turn to pick" key="picking">
-							<i class="las la-pen"></i>
+							<i class="las la-check"></i>
 						</span>
 						<span class="badge disconnected" title="They are currently disconnected" v-if="!state.connected.captains[captainId]" key="disconnected">
 							<i class="las la-plug"></i>
@@ -114,6 +114,10 @@ export default defineComponent({
 			state.players = new Map(players);
 		});
 
+		socket.on('updateCaptainName', ({ id, name }) => {
+			state.captainIds.set(id, name);
+		});
+
 		socket.on('connection', connectionObject => {
 			state.connected = connectionObject;
 		});
@@ -125,6 +129,13 @@ export default defineComponent({
 
 		socket.emit('selectMatch', useRoute().params.id);
 		socket.emit('selectRole', useRoute().params.secret);
+
+		function editCaptainName(name: string, id: string) {
+			socket.emit('editCaptainName', {
+				id,
+				name
+			});
+		}
 
 		function addPlayer() {
 			if (state.newPlayer.length === 0) return;
@@ -190,7 +201,7 @@ export default defineComponent({
 			return `{ ${outputTable.join(', ')} }`;
 		}
 
-		return { state, isHost, addPlayer, removePlayer, pickPlayer, playersOf, origin, pingCaptain, forcePick, generateLua, generateDiscord, beforeLeave };
+		return { state, isHost, editCaptainName, addPlayer, removePlayer, pickPlayer, playersOf, origin, pingCaptain, forcePick, generateLua, generateDiscord, beforeLeave };
 	}
 });
 </script>
