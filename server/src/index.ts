@@ -265,14 +265,14 @@ io.on('connection', async connection => {
 			});
 
 			connection.on('editCaptainName', ({ id, name }) => {
-				const currentCaptain = selectedMatch.captains.get(id)!
+				const currentCaptain = selectedMatch.captains.get(id)!;
 
 				currentCaptain.name = name;
 
 				sendToAll('updateCaptainName', {
 					name,
 					id
-				})
+				});
 			});
 
 			connection.on('add', (playerName) => {
