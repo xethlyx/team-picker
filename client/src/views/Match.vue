@@ -5,7 +5,7 @@
 		</div>
 		<div class="selection-container" v-for="[captainId, captainName] of state.captainIds" :key="captainId">
 			<div class="selection-header">
-				<span contenteditable="true" @input="editCaptainName($event.target.textContent, captainId)">
+				<span :contenteditable="isHost" @[editCaptainNameInputEvent]="editCaptainName($event.target.textContent, captainId)">
 					{{ captainName }}
 				</span>
 				<span class="right-container">
@@ -87,6 +87,8 @@ export default defineComponent({
 
 		const isHost = computed(() => state.role === 'host');
 
+		const editCaptainNameInputEvent = computed(() => isHost.value ? 'input' :  null);
+
 		const origin = window.location.origin;
 
 		const socket = io();
@@ -115,6 +117,8 @@ export default defineComponent({
 		});
 
 		socket.on('updateCaptainName', ({ id, name }) => {
+			if (isHost.value) return;
+
 			state.captainIds.set(id, name);
 		});
 
@@ -201,7 +205,7 @@ export default defineComponent({
 			return `{ ${outputTable.join(', ')} }`;
 		}
 
-		return { state, isHost, editCaptainName, addPlayer, removePlayer, pickPlayer, playersOf, origin, pingCaptain, forcePick, generateLua, generateDiscord, beforeLeave };
+		return { state, isHost, editCaptainNameInputEvent, editCaptainName, addPlayer, removePlayer, pickPlayer, playersOf, origin, pingCaptain, forcePick, generateLua, generateDiscord, beforeLeave };
 	}
 });
 </script>
