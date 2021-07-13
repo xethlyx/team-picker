@@ -267,10 +267,7 @@ io.on('connection', async connection => {
 			connection.on('editCaptainName', ({ id, name }) => {
 				const currentCaptain = selectedMatch.captains.get(id)!
 
-				selectedMatch.captains.set(id, {
-					...currentCaptain,
-					name
-				})
+				currentCaptain.name = name;
 
 				sendToAll('updateCaptainName', {
 					name,
