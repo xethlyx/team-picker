@@ -264,6 +264,17 @@ io.on('connection', async connection => {
 				}, 10000);
 			});
 
+			connection.on('editCaptainName', ({ id, name }) => {
+				const currentCaptain = selectedMatch.captains.get(id)!;
+
+				currentCaptain.name = name;
+
+				sendToAll('updateCaptainName', {
+					name,
+					id
+				});
+			});
+
 			connection.on('add', (playerName) => {
 				if (typeof playerName !== 'string') return;
 

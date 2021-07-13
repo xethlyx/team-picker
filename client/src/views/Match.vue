@@ -5,7 +5,7 @@
 		</div>
 		<div class="selection-container" v-for="[captainId, captainName] of state.captainIds" :key="captainId">
 			<div class="selection-header">
-				<span>
+				<span :contenteditable="isHost" @[editCaptainNameInputEvent]="editCaptainName($event.target.textContent, captainId)">
 					{{ captainName }}
 				</span>
 				<span class="right-container">
@@ -87,6 +87,8 @@ export default defineComponent({
 
 		const isHost = computed(() => state.role === 'host');
 
+		const editCaptainNameInputEvent = computed(() => isHost.value ? 'input' :  null);
+
 		const origin = window.location.origin;
 
 		const socket = io();
@@ -114,6 +116,12 @@ export default defineComponent({
 			state.players = new Map(players);
 		});
 
+		socket.on('updateCaptainName', ({ id, name }) => {
+			if (isHost.value) return;
+
+			state.captainIds.set(id, name);
+		});
+
 		socket.on('connection', connectionObject => {
 			state.connected = connectionObject;
 		});
@@ -125,6 +133,13 @@ export default defineComponent({
 
 		socket.emit('selectMatch', useRoute().params.id);
 		socket.emit('selectRole', useRoute().params.secret);
+
+		function editCaptainName(name: string, id: string) {
+			socket.emit('editCaptainName', {
+				id,
+				name
+			});
+		}
 
 		function addPlayer() {
 			if (state.newPlayer.length === 0) return;
@@ -190,7 +205,7 @@ export default defineComponent({
 			return `{ ${outputTable.join(', ')} }`;
 		}
 
-		return { state, isHost, addPlayer, removePlayer, pickPlayer, playersOf, origin, pingCaptain, forcePick, generateLua, generateDiscord, beforeLeave };
+		return { state, isHost, editCaptainNameInputEvent, editCaptainName, addPlayer, removePlayer, pickPlayer, playersOf, origin, pingCaptain, forcePick, generateLua, generateDiscord, beforeLeave };
 	}
 });
 </script>
